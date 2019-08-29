@@ -1,0 +1,47 @@
+{
+    "one_time": false,
+    "buttons": [
+        [{
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"1\"}",
+                    "label": "Отписаться"
+                },
+                "color": "negative"
+            },
+            {
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"1\"}",
+                    "label": "Подписаться"
+                },
+                "color": "positive"
+            },
+            {
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"2\"}",
+                    "label": "Мои интересы"
+                },
+                "color": "primary"
+            }
+        ],
+         [{
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"1\"}",
+                    "label": "Задать новые интересы"
+                },
+                "color": "secondary"
+          }],
+          [{
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"2\"}",
+                    "label": "Добавить интерес"
+                },
+                "color": "secondary"
+          }]
+
+    ]
+}
