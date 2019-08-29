@@ -67,8 +67,9 @@ class Keyword(Base):
     vk_user_id = Column('vk_user_id', Integer, ForeignKey("vk_users.vk_user_id"), nullable=True),
     name = Column('name', String)
 
-    def __init__(self, name, fullname, password):
+    def __init__(self, name, vk_user_id):
         self.name = name
+        self.vk_user_id = vk_user_id
 
     def __repr__(self):
         return "<Keyword('%s')>" % (self.name)

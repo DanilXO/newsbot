@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy.orm import sessionmaker
 from vk_api.longpoll import VkLongPoll, VkEventType
 
-from models import engine, VkUser
+from models import engine, VkUser, Keyword
 from newsparser import NewsParser
 
 
@@ -103,10 +103,15 @@ class VkBot:
 
     def add_user_interest(self, user_id, interests):
         """ Добавляет новый интерес пользователя """
-        if self.USERS_INTERESTS.get(user_id, None):
-            self.USERS_INTERESTS[user_id].append(re.findall(r"[\w']+", interests))
-        else:
-            self.USERS_INTERESTS[user_id] = re.findall(r"[\w']+", interests)
+        user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
+        keywords = []
+        for keyword in re.findall(r"[\w']+", interests):
+            keywords.append(Keyword(name=keyword, vk_user_id=user_id))
+        self.db_session.bulk_save_objects(keywords)
+        # if not keywords:
+        #     self.USERS_INTERESTS[user_id].append(re.findall(r"[\w']+", interests))
+        # else:
+        #     self.USERS_INTERESTS[user_id] = re.findall(r"[\w']+", interests)
         self.api.messages.send(
             user_id=user_id,
             random_id=random.randint(0, sys.maxsize),
