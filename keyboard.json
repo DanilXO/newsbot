@@ -37,11 +37,18 @@
           [{
                 "action": {
                     "type": "text",
-                    "payload": "{\"button\": \"2\"}",
+                    "payload": "{\"button\": \"1\"}",
                     "label": "Добавить интерес"
                 },
                 "color": "secondary"
+          }],
+          [{
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"1\"}",
+                    "label": "Популярное"
+                },
+                "color": "primary"
           }]
-
     ]
 }
