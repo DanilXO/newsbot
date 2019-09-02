@@ -26,6 +26,14 @@
                 "color": "primary"
             }
         ],
+        [{
+                "action": {
+                    "type": "text",
+                    "payload": "{\"button\": \"1\"}",
+                    "label": "Очистить мои интересы"
+                },
+                "color": "secondary"
+          }],
          [{
                 "action": {
                     "type": "text",
@@ -38,7 +46,7 @@
                 "action": {
                     "type": "text",
                     "payload": "{\"button\": \"1\"}",
-                    "label": "Добавить интерес"
+                    "label": "Добавить интересы"
                 },
                 "color": "secondary"
           }],
@@ -46,7 +54,7 @@
                 "action": {
                     "type": "text",
                     "payload": "{\"button\": \"1\"}",
-                    "label": "Популярное"
+                    "label": "Актуальная новость"
                 },
                 "color": "primary"
           }]
