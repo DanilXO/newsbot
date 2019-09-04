@@ -2,13 +2,14 @@ import datetime
 
 import requests
 from bs4 import BeautifulSoup
-from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, Table, DateTime
+from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, Table, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.sql import ClauseElement
 
 Base = declarative_base()
-engine = create_engine('sqlite:///test.sqlite', echo=True)
-# engine = create_engine('sqlite:///test.sqlite', echo=False)
+# engine = create_engine('sqlite:///test.sqlite', echo=True)
+engine = create_engine('sqlite:///test.sqlite', echo=False)
 
 
 association_vkuser_keywords_table = Table('vkuser_keywords', Base.metadata,
@@ -100,25 +101,23 @@ class Keyword(Base):
 
 class News(Base):
     __tablename__ = 'news'
-    id = Column('id', String, primary_key=True, unique=True)
+    id = Column('id', Integer, primary_key=True, autoincrement=True, unique=True)
     title = Column('title', String)
-    description = Column('description', String)
     published = Column('published', DateTime, default=datetime.datetime.utcnow)
     link = Column('link', String)
     vk_user_id = Column(Integer, ForeignKey('vk_users.vk_user_id'))
     vk_user = relationship("VkUser", back_populates="news")
+    was_readed = Column('Was readed', Boolean, default=False)
 
-    def __init__(self, vk_user, id, title, description, published, link):
+    def __init__(self, vk_user, title, published, link):
         self.vk_user = vk_user
         self.vk_user_id = vk_user.vk_user_id
-        self.id = id
         self.title = title
-        self.description = description
         self.published = published
         self.link = link
 
     def __repr__(self):
-        return "<News('%s')>" % (self.title)
+        return "<CurrentNews('%s')>" % (self.title)
 
 
 if __name__ == '__main__':

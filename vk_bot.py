@@ -1,6 +1,8 @@
 import random
 import re
 import sys
+import time
+
 import vk_api
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -19,7 +21,7 @@ class VkBot:
             self.keyboard = kb.read()
         self._ACTIONS = {"ПОДПИСАТЬСЯ": self.subscribe,
                          "ОТПИСАТЬСЯ": self.unsubscribe,
-                         "АКТУАЛЬНАЯ_НОВОСТЬ": self.get_users_news,
+                         "АКТУАЛЬНАЯ_НОВОСТЬ": self.send_users_news,
                          "ОЧИСТИТЬ_МОИ_ИНТЕРЕСЫ": self.clear_user_interests,
                          "МОИ_ИНТЕРЕСЫ": self.get_user_interests,
                          "ЗАДАТЬ_НОВЫЕ_ИНТЕРЕСЫ": self.set_user_interests,
@@ -92,8 +94,10 @@ class VkBot:
             )
 
     def clear_user_interests(self, user_id):
-        self.db_session.query(Keyword).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id))\
-                                                                  .delete(synchronize_session='fetch')
+        user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
+        user.keyword = []
+        # self.db_session.query(VkUser).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id))\
+        #                                                           .delete(synchronize_session='fetch')
         self.db_session.commit()
 
     def set_user_interests(self, user_id, interests):
@@ -121,15 +125,8 @@ class VkBot:
                 except IntegrityError:
                     pass
             print(new_keywords)
-        if not new_keywords:
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Интересы либо заданны не корректно, либо вы уже на них подписаны.",
-                keyboard=self.keyboard
-            )
-        else:
-            self.api.messages.send(
+
+        self.api.messages.send(
                 user_id=user_id,
                 random_id=random.randint(0, sys.maxsize),
                 message="Вы успешно добавили новые интересы!"
@@ -138,44 +135,112 @@ class VkBot:
             )
 
     def get_users_news(self, user_id):
-        new_news = 0
         user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
         keywords = [interest.name for interest in
                     self.db_session.query(Keyword).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id))]
-        news_list = self.news_parser.get_news(keywords)
+        news_list = self.news_parser.get_news(keywords)[:1]
+        print(news_list)
         for keyword in keywords:
-            news_list += self.news_parser.get_news(keyword)
-        if not news_list:
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Ничего не найдено. Будем держать вас в курсе...",
-                keyboard=self.keyboard
-            )
-            return
-        else:
-            readed_news_list = [val.id for val in self.db_session.query(News).filter(News.vk_user.has(VkUser.vk_user_id == user_id))]
-            for new in news_list:
-                if new['id'] not in readed_news_list:
-                    self.api.messages.send(
-                        user_id=user_id,
-                        random_id=random.randint(0, sys.maxsize),
-                        message="Новость:\n_________\n❗{}❗\n\n{}\nПодробне:{}\n\n\n".format(new["title"],
-                                                                                            new["description"],
-                                                                                            new["link"]),
-                        keyboard=self.keyboard
-                    )
-                    self.db_session.add(News(vk_user=user, **new))
+            news_list += self.news_parser.get_news(keyword)[:1]
+        print(news_list)
+        if news_list:
+            for news in news_list:
+                news_in_db = self.db_session.query(News).filter_by(title=news['title']).first()
+                if not news_in_db:
+                    self.db_session.add(News(vk_user=user, **news))
                     self.db_session.commit()
-                    new_news += 1
-                    return
-        if new_news == 0:
+
+    def send_users_news(self, user_id):
+        self.get_users_news(user_id)
+        news = self.db_session.query(News).filter(News.vk_user.has(VkUser.vk_user_id == user_id), News.was_readed == False).first()
+        if news:
+            self.api.messages.send(
+                    user_id=user_id,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Новость: {} \nПодробне: {}\n".format(news.title, news.link),
+                    keyboard=self.keyboard
+                 )
+            news.was_readed = True
+            self.db_session.commit()
+        else:
             self.api.messages.send(
                 user_id=user_id,
                 random_id=random.randint(0, sys.maxsize),
-                message="Ничего не найдено. Будем держать вас в курсе...",
+                message="Для Вас не нашлось актуальных новостей. Будем держать Вас в курсе.",
                 keyboard=self.keyboard
             )
+
+    def send_news_for_many_users_for_keyword(self, users_ids, keyword=None):
+        # TODO: НЕ НАХОДИТ ПОЛЬЗОВАТЕЛЕЙ, ПОФИКСИТЬ.
+        users = self.db_session.query(VkUser).filter(News.vk_user.has(VkUser.vk_user_id in users_ids)).all()
+        print("whaaat")
+        if keyword:
+            news = self.news_parser.get_news(keyword)[0]
+            # news_in_db = self.db_session.query(News).filter_by(title=news['title']).all()
+            print("whaaat2")
+            print(users)
+            for user in users:
+                print(user)
+                news_in_db_for_user = self.db_session.query(News).filter(News.vk_user.has(VkUser.vk_user_id == user.vk_user_id),
+                                                                         News.title == news['title'], News.was_readed == False).first()
+                print(news_in_db_for_user)
+                if not news_in_db_for_user:
+                    new_news = News(vk_user=user, **news)
+                    print(new_news)
+                    print(new_news.id)
+                    self.db_session.add(new_news)
+                    self.db_session.commit()
+                    print(new_news.id)
+            users_was_read_it = self.db_session.query(VkUser).filter(News.vk_user.has(VkUser.vk_user_id.in_(users_ids)),
+                                                                     News.title == news['title'], News.was_readed == True).all()
+            users_ids = list(set(users_ids).union(set(users_was_read_it)))
+            self.api.messages.send(
+                user_ids=users_ids,
+                random_id=random.randint(0, sys.maxsize),
+                message="Новость: {} \nПодробне: {}\n".format(news["title"], news["link"]),
+                keyboard=self.keyboard
+            )
+            # news = self.db_session.query(News).filter_by(title=news['title']).all()
+            news = self.db_session.query(News).all()
+            print(news)
+            self.db_session.commit()
+
+        # if keyword is not None:
+        #     news_list = self.news_parser.get_news(keyword)
+        # else:
+        #     news_list = self.news_parser.get_news()
+        # if news_list:
+        #     readed_news_ids = {}
+        #     readed_news_titles = {}
+        #     for user in users:
+        #         users_readed = self.db_session.query(News).filter(News.vk_user.has(VkUser.vk_user_id == user.vk_user_id)).all()
+        #         readed_news_ids[user.vk_user_id] = [val.vk_user_id for val in users_readed]
+        #         readed_news_titles[user.vk_user_id] = [val.title for val in users_readed]
+        #     for new in news_list:
+        #         for user_id in users_ids:
+        #             if new['id'] in readed_news_ids.get(user_id, []) or new['title'] in readed_news_titles.get(user_id, []):
+        #                 users_ids.remove(user_id)
+        #         if users_ids:
+        #             self.api.messages.send(
+        #                     user_ids=users_ids,
+        #                     random_id=random.randint(0, sys.maxsize),
+        #                     message="Новость: {} \nПодробне: {}\n".format(new["title"], new["link"]),
+        #                     keyboard=self.keyboard
+        #             )
+        #             for user in users:
+        #                 news = self.db_session.query(News).filter_by(id=str(new['id'])).first()
+        #                 print(news)
+        #                 if news:
+        #                     user.news.append(news)
+        #                     self.db_session.add(news)
+        #                 else:
+        #                     new_news = News(vk_user=user, **new)
+        #                     self.db_session.add(new_news)
+        #                     user.news.append(new_news)
+        #                 self.db_session.commit()
+        #                 time.sleep(1)
+        #                 return
+
 
     def _connect(self):
         try:
@@ -213,9 +278,13 @@ class VkBot:
                             keyboard=self.keyboard
                         )
 
-    def run(self):
+    def gen_api(self):
         self._connect()
         longpoll = VkLongPoll(self._SESSION)
         self.api = self._SESSION.get_api()
+        return longpoll
+
+    def run(self):
+        longpoll = self.gen_api()
         print("Server started")
         self._eventloop(longpoll)

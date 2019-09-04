@@ -5,27 +5,29 @@ from time import mktime
 
 
 class NewsParser:
-    url = 'http://news.google.com/news/'
-    meta_params = '&pz=1&cf=all&ned=ca&hl=ru&gl=RU&ceid=RU:ru&topic=w&output=rss'
+    url = 'http://news.google.com/news/rss'
+    meta_params = '?hl=ru&gl=RU&ceid=RU:ru'
     query = ''
     spliter = '%20'
 
-    def __init__(self, lang='ru'):
-        self.meta_params = '&pz=1&cf=all&ned=ca&hl={}&gl={}&ceid={}:{}&topic=w&output=rss'.format(lang, lang.upper(),
-                                                                                                  lang.upper(), lang)
+    def __init__(self, lang='ru', delta=timedelta(days=1)):
+        self.meta_params = '?hl={0}&gl={1}&ceid={2}:{3}'.format(lang, lang.upper(), lang.upper(), lang)
+        self.delta = delta
 
     def news_is_actual(self, value):
-        return True if (datetime.now() - timedelta(days=1)) <= value["published"] <= (datetime.now() + timedelta(days=1)) else False
+        return True if (datetime.now() - self.delta) <= value["published"] <= (datetime.now() + self.delta) else False
 
-    def get_news(self, keywords=None):
-        if keywords:
-            self.query = "{}{}".format('search?q=', "{}".format(self.spliter).join(keywords))
-        else:
-            self.query = "?"
-        d = feedparser.parse("{}{}{}".format(self.url, self.query, self.meta_params))
-        news = [{"id": entry.id,
-                 "title": entry.title,
-                 "description": BeautifulSoup(entry.description, "lxml").text.replace(u'\xa0', u' '),
+    def get_news(self, keywords=None, delta=timedelta(days=1)):
+        self.delta = delta
+        # if keywords:
+        #     self.query = "{}{}".format('search?q=', "{}".format(self.spliter).join(keywords))
+        # else:
+        #     self.query = "?"
+        self.query = "?"
+        print("{}{}&{}".format(self.url, self.query, self.meta_params))
+        d = feedparser.parse("{}{}&{}".format(self.url, self.query, self.meta_params))
+        print(d['entries'])
+        news = [{"title": entry.title.split(" - ")[0],
                  "published": datetime.fromtimestamp(mktime(entry.published_parsed)),
                  "link": entry.link} for entry in d['entries']]
         print(news)
