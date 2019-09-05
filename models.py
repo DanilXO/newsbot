@@ -18,6 +18,15 @@ association_vkuser_keywords_table = Table('vkuser_keywords', Base.metadata,
                                           )
 
 
+class AssociationNewsFromVkUser(Base):
+    __tablename__ = 'association_news_From_vkuser'
+    vk_user_id = Column(Integer, ForeignKey('vk_users.vk_user_id'), primary_key=True)
+    news_id = Column(Integer, ForeignKey('news.id'), primary_key=True)
+    was_readed = Column('Was readed', Boolean, default=False)
+    child = relationship("News", back_populates="vk_user")
+    parent = relationship("VkUser", back_populates="news")
+
+
 class VkUser(Base):
     __tablename__ = 'vk_users'
     vk_user_id = Column('vk_user_id', Integer, primary_key=True, unique=True)
@@ -26,7 +35,7 @@ class VkUser(Base):
         "Keyword",
         secondary=association_vkuser_keywords_table,
         back_populates="vk_user")
-    news = relationship("News", back_populates="vk_user")
+    news = relationship("AssociationNewsFromVkUser", back_populates="parent")
 
     def __init__(self, vk_user_id, keyword=None):
         self.vk_user_id = vk_user_id
@@ -68,17 +77,17 @@ class VkUser(Base):
         return "<VkUser('%s','%s')>" % (self.vk_user_id, self.fullname)
 
 
-class TelegramUser(Base):
-    __tablename__ = 'telegram_user'
-    telegram_id = Column('telegram_id', Integer, primary_key=True, unique=True)
-    fullname = Column('fullname', String)
-
-    def __init__(self, name, fullname, password):
-        self.name = name
-        self.fullname = fullname
-
-    def __repr__(self):
-        return "<TelegramUser('%s','%s')>" % (self.telegram_id, self.fullname)
+# class TelegramUser(Base):
+#     __tablename__ = 'telegram_user'
+#     telegram_id = Column('telegram_id', Integer, primary_key=True, unique=True)
+#     fullname = Column('fullname', String)
+#
+#     def __init__(self, name, fullname, password):
+#         self.name = name
+#         self.fullname = fullname
+#
+#     def __repr__(self):
+#         return "<TelegramUser('%s','%s')>" % (self.telegram_id, self.fullname)
 
 
 class Keyword(Base):
@@ -105,13 +114,10 @@ class News(Base):
     title = Column('title', String)
     published = Column('published', DateTime, default=datetime.datetime.utcnow)
     link = Column('link', String)
-    vk_user_id = Column(Integer, ForeignKey('vk_users.vk_user_id'))
-    vk_user = relationship("VkUser", back_populates="news")
+    vk_user = relationship("AssociationNewsFromVkUser", back_populates="child")
     was_readed = Column('Was readed', Boolean, default=False)
 
-    def __init__(self, vk_user, title, published, link):
-        self.vk_user = vk_user
-        self.vk_user_id = vk_user.vk_user_id
+    def __init__(self, title, published, link):
         self.title = title
         self.published = published
         self.link = link
