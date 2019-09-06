@@ -123,6 +123,7 @@ class VkBot:
             if exists_kw is not None:
                 try:
                     exists_kw.vk_user.append(user)
+                    self.db_session.commit()
                 except IntegrityError:
                     pass
             else:
@@ -195,7 +196,6 @@ class VkBot:
             )
 
     def send_news_for_many_users(self, users_ids, keyword=None):
-        users = self.db_session.query(VkUser).filter(VkUser.vk_user_id.in_(users_ids)).all()
         if keyword:
             list_news = self.news_parser.get_news(keyword)
         else:
@@ -206,8 +206,9 @@ class VkBot:
         users_was_read_it = self.db_session.query(VkUser.vk_user_id).filter(VkUser.vk_user_id.in_(users_ids),
                                                                              VkUser.news.any(News.title == news['title']),
                                                                                 VkUser.news.any(News.was_readed == True)).all()
-        users_ids = list(set(users_ids) - set([_[0] for _ in users_was_read_it]))
 
+        users_ids = list(set(users_ids) - set([_[0] for _ in users_was_read_it]))
+        users = self.db_session.query(VkUser).filter(VkUser.vk_user_id.in_(users_ids)).all()
         for user in users:
             news_in_db = self.db_session.query(News).filter(News.title == news['title']).first()
             with self.db_session.no_autoflush:
@@ -217,21 +218,28 @@ class VkBot:
                     a.child = new_news
                     a.child.was_readed = True
                     user.news.append(a)
+                    self.db_session.commit()
                 elif news_in_db and not self.db_session.query(AssociationNewsFromVkUser)\
-                        .filter(AssociationNewsFromVkUser.child == news_in_db, AssociationNewsFromVkUser.parent == user):
+                        .filter(AssociationNewsFromVkUser.child == news_in_db, AssociationNewsFromVkUser.parent == user).first():
                     a.child = news_in_db
                     a.child.was_readed = True
                     user.news.append(a)
-                self.db_session.commit()
-
+                    self.db_session.commit()
+                else:
+                    print("Что за ситуация?")
+        print(news)
+        print(users)
+        print("ИМ ОТПРАВИТСЯ:")
+        print(users_ids)
         if users_ids:
+            print(bool(users_ids))
             self.api.messages.send(
                 user_ids=users_ids,
                 random_id=random.randint(0, sys.maxsize),
                 message="Новость: {} \nПодробне: {}\n".format(news["title"], news["link"]),
                 keyboard=self.keyboard
             )
-
+            print("отправилось")
             self.db_session.commit()
         else:
             return

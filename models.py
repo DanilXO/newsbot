@@ -6,11 +6,10 @@ from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, Table
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import ClauseElement
-
+import psycopg2
 Base = declarative_base()
 # engine = create_engine('sqlite:///test.sqlite', echo=True)
-engine = create_engine('sqlite:///test.sqlite', echo=False)
-
+engine = create_engine('postgresql+psycopg2://project:password@localhost:5432/news_bot', echo=False)
 
 association_vkuser_keywords_table = Table('vkuser_keywords', Base.metadata,
                                           Column('vk_user_id', Integer, ForeignKey('vk_users.vk_user_id')),
