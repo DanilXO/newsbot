@@ -96,22 +96,21 @@ class VkBot:
                 keyboard=self.keyboard
             )
 
-    def clear_user_interests(self, user_id):
+    def clear_user_interests(self, user_id, send_msg=True):
         user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
         user.keyword = []
-        self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Ваши интересы чисты как банный лист. Можете проверить отправив 'Мои интересы'",
-                keyboard=self.keyboard
-        )
-        # self.db_session.query(VkUser).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id))\
-        #                                                           .delete(synchronize_session='fetch')
+        if send_msg:
+            self.api.messages.send(
+                    user_id=user_id,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Ваши интересы чисты как банный лист. Можете проверить отправив 'Мои интересы'",
+                    keyboard=self.keyboard
+            )
         self.db_session.commit()
 
     def set_user_interests(self, user_id, interests):
         """ Задает новые интересы пользователя """
-        self.clear_user_interests(user_id)
+        self.clear_user_interests(user_id, send_msg=False)
         self.add_user_interest(user_id, interests)
 
     def add_user_interest(self, user_id, interests):
@@ -196,9 +195,7 @@ class VkBot:
             )
 
     def send_news_for_many_users(self, users_ids, keyword=None):
-        print("на вход:", users_ids)
         users = self.db_session.query(VkUser).filter(VkUser.vk_user_id.in_(users_ids)).all()
-        print(users)
         if keyword:
             list_news = self.news_parser.get_news(keyword)
         else:

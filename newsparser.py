@@ -18,26 +18,18 @@ class NewsParser:
         return True if (datetime.now() - self.delta) <= value["published"] <= (datetime.now() + self.delta) else False
 
     def get_news(self, keywords=None, delta=timedelta(days=3)):
-        print(keywords)
         self.delta = delta
         if keywords:
             if isinstance(keywords, list) or isinstance(keywords, tuple):
                 self.query = "{}{}".format('/search?q=', "{}".format(self.spliter).join(keywords))
-                print("{}{}{}".format(self.url, self.query, self.meta_params))
             else:
                 self.query = "{}{}".format('/search?q=', keywords)
-                print("{}{}{}".format(self.url, self.query, self.meta_params))
             d = feedparser.parse("{}{}{}".format(self.url, self.query, self.meta_params))
         else:
             self.query = "?"
             d = feedparser.parse("{}{}{}".format(self.url, self.query, self.meta_params))
-        # for entry in d['entries']:
-        #     print(datetime.fromtimestamp(mktime(entry.published_parsed)).strftime("%Y-%m-%d %H:%M:%S"))
-        #     # print(self.news_is_actual(entry))
         news = [{"title": entry.title.split(" - ")[0],
                  "published": datetime.fromtimestamp(mktime(entry.published_parsed)),
                  "link": entry.link} for entry in d['entries']]
-        # news = list(filter(self.news_is_actual, news))
-        print(news)
         return news
 
