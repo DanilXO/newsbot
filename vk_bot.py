@@ -96,13 +96,6 @@ class VkBot:
                 message="Ваши интересы: {}".format(", ".join([interest.name for interest in user_interests])),
                 keyboard=self.keyboard
             )
-        else:
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Вы ещё не задали свои интересы и подписаны на общую новостную рассылку.",
-                keyboard=self.keyboard
-            )
 
     def clear_user_interests(self, user_id, send_msg=True):
         user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
