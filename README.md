@@ -1,4 +1,3 @@
-# newsbot
-## Бот-агрегатор новостей для VK/Telegram
-### Технологии: Python, SQLAlchemy, Celery(планируется)
-### В процессе...
+# NewsBot - Бот-агрегатор новостей для vk.com
+### Использовано: 
+    Python, vk_api, SQLAlchemy

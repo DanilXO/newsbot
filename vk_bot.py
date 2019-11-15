@@ -1,4 +1,3 @@
-import asyncio
 import random
 import re
 import sys
@@ -11,6 +10,9 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 
 from models import engine, VkUser, Keyword, News, AssociationNewsFromVkUser
 from newsparser import NewsParser
+import logging
+
+log = logging.getLogger("botlog")
 
 
 class VkBot:
@@ -79,7 +81,6 @@ class VkBot:
 
     def get_user_interests(self, user_id):
         """ Получить интересы пользователя """
-        user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
         user_interests = self.db_session.query(Keyword).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id)).all()
         if user_interests:
             self.api.messages.send(
@@ -124,15 +125,15 @@ class VkBot:
                 try:
                     exists_kw.vk_user.append(user)
                     self.db_session.commit()
-                except IntegrityError:
-                    pass
+                except IntegrityError as ex:
+                    log.error(ex)
             else:
                 try:
                     self.db_session.add(Keyword(name=keyword, vk_user=[user]))
                     self.db_session.commit()
                     new_keywords.append(keyword)
-                except IntegrityError:
-                    pass
+                except IntegrityError as ex:
+                    log.error(ex)
 
         self.api.messages.send(
                 user_id=user_id,
@@ -200,7 +201,7 @@ class VkBot:
             list_news = self.news_parser.get_news(keyword)
         else:
             list_news = self.news_parser.get_news()
-        if not list_news:
+        if list_news:
             return
         news = list_news[0]
         users_was_read_it = self.db_session.query(VkUser.vk_user_id).filter(VkUser.vk_user_id.in_(users_ids),
@@ -225,30 +226,20 @@ class VkBot:
                     a.child.was_readed = True
                     user.news.append(a)
                     self.db_session.commit()
-                else:
-                    print("Что за ситуация?")
-        print(news)
-        print(users)
-        print("ИМ ОТПРАВИТСЯ:")
-        print(users_ids)
         if users_ids:
-            print(bool(users_ids))
             self.api.messages.send(
                 user_ids=users_ids,
                 random_id=random.randint(0, sys.maxsize),
                 message="Новость: {} \nПодробне: {}\n".format(news["title"], news["link"]),
                 keyboard=self.keyboard
             )
-            print("отправилось")
             self.db_session.commit()
-        else:
-            return
 
     def _connect(self):
         try:
             self._SESSION.auth(token_only=True)
-        except vk_api.AuthError as error_msg:
-            print(error_msg)
+        except vk_api.AuthError as ex:
+            log.error(ex)
 
     def _eventloop(self, longpoll):
         previous_command = None
@@ -298,5 +289,4 @@ class VkBot:
 
     def run(self):
         longpoll = self.gen_api()
-        print("Server started")
         self._eventloop(longpoll)

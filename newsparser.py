@@ -1,8 +1,7 @@
 import urllib.parse
 
 import feedparser
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from time import mktime
 
 

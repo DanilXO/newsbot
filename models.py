@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import ClauseElement
 import psycopg2
 Base = declarative_base()
-# engine = create_engine('sqlite:///test.sqlite', echo=True)
 engine = create_engine('postgresql+psycopg2://project:password@localhost:5432/news_bot', echo=False)
 
 association_vkuser_keywords_table = Table('vkuser_keywords', Base.metadata,
@@ -74,19 +73,6 @@ class VkUser(Base):
 
     def __repr__(self):
         return "<VkUser('%s','%s')>" % (self.vk_user_id, self.fullname)
-
-
-# class TelegramUser(Base):
-#     __tablename__ = 'telegram_user'
-#     telegram_id = Column('telegram_id', Integer, primary_key=True, unique=True)
-#     fullname = Column('fullname', String)
-#
-#     def __init__(self, name, fullname, password):
-#         self.name = name
-#         self.fullname = fullname
-#
-#     def __repr__(self):
-#         return "<TelegramUser('%s','%s')>" % (self.telegram_id, self.fullname)
 
 
 class Keyword(Base):
