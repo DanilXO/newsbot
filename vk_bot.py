@@ -37,47 +37,54 @@ class VkBot:
 
     def subscribe(self, user_id):
         """ Подписаться на новости """
-        if self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first():
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Вы и так уже подписаны на новостную рассылку.",
-                keyboard=self.keyboard
-            )
-        else:
-            new_user = VkUser(vk_user_id=user_id)
-            self.db_session.add(new_user)
-            self.db_session.commit()
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Вы были успешно подписаны на новости! Задайте свои интересы, "
-                        "чтобы получать новости только по определенным тематикам.",
-                keyboard=self.keyboard
-            )
+        try:
+            if self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first():
+                self.api.messages.send(
+                    user_id=user_id,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Вы и так уже подписаны на новостную рассылку.",
+                    keyboard=self.keyboard
+                )
+            else:
+                new_user = VkUser(vk_user_id=user_id)
+                self.db_session.add(new_user)
+                self.db_session.commit()
+                self.api.messages.send(
+                    user_id=user_id,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Вы были успешно подписаны на новости! Задайте свои интересы, "
+                            "чтобы получать новости только по определенным тематикам.",
+                    keyboard=self.keyboard
+                )
+        except Exception as ex:
+            self.db_session.rollback()
+            log.error(ex)
 
     def unsubscribe(self, user_id):
         """ Отписаться от новостей """
-        user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
-        if user:
-            for relation in user.news:
-                self.db_session.delete(relation)
-            self.db_session.delete(user)
-            self.db_session.commit()
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Вы успешно отписались. Очень жаль, мы будем скучать!",
-                keyboard=self.keyboard
-            )
-
-        else:
-            self.api.messages.send(
-                user_id=user_id,
-                random_id=random.randint(0, sys.maxsize),
-                message="Вы ещё не подписались на новостную рассылку.",
-                keyboard=self.keyboard
-            )
+        try:
+            user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
+            if user:
+                for relation in user.news:
+                    self.db_session.delete(relation)
+                self.db_session.delete(user)
+                self.db_session.commit()
+                self.api.messages.send(
+                    user_id=user_id,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Вы успешно отписались. Очень жаль, мы будем скучать!",
+                    keyboard=self.keyboard
+                )
+            else:
+                self.api.messages.send(
+                    user_id=user_id,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Вы ещё не подписались на новостную рассылку.",
+                    keyboard=self.keyboard
+                )
+        except Exception as ex:
+            self.db_session.rollback()
+            log.error(ex)
 
     def get_user_interests(self, user_id):
         """ Получить интересы пользователя """
@@ -107,7 +114,6 @@ class VkBot:
                     message="Ваши интересы чисты как банный лист. Можете проверить отправив 'Мои интересы'",
                     keyboard=self.keyboard
             )
-        self.db_session.commit()
 
     def set_user_interests(self, user_id, interests):
         """ Задает новые интересы пользователя """
@@ -126,6 +132,7 @@ class VkBot:
                     exists_kw.vk_user.append(user)
                     self.db_session.commit()
                 except IntegrityError as ex:
+                    self.db_session.rollback()
                     log.error(ex)
             else:
                 try:
@@ -133,6 +140,7 @@ class VkBot:
                     self.db_session.commit()
                     new_keywords.append(keyword)
                 except IntegrityError as ex:
+                    self.db_session.rollback()
                     log.error(ex)
 
         self.api.messages.send(
@@ -144,21 +152,25 @@ class VkBot:
             )
 
     def get_users_news(self, user_id):
-        user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
-        keywords = [interest.name for interest in
-                    self.db_session.query(Keyword).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id))]
-        news_list = self.news_parser.get_news(keywords)[:1]
-        for keyword in keywords:
-            news_list += self.news_parser.get_news(keyword)[:1]
-        if news_list:
-            for news in news_list:
-                news_in_db = self.db_session.query(News).filter_by(title=news['title']).first()
-                if not news_in_db:
-                    a = AssociationNewsFromVkUser()
-                    a.child = News(**news)
-                    user.news.append(a)
-                    self.db_session.add(a)
-                    self.db_session.commit()
+        try:
+            user = self.db_session.query(VkUser).filter_by(vk_user_id=user_id).first()
+            keywords = [interest.name for interest in
+                        self.db_session.query(Keyword).filter(Keyword.vk_user.any(VkUser.vk_user_id == user_id))]
+            news_list = self.news_parser.get_news(keywords)[:1]
+            for keyword in keywords:
+                news_list += self.news_parser.get_news(keyword)[:1]
+            if news_list:
+                for news in news_list:
+                    news_in_db = self.db_session.query(News).filter_by(title=news['title']).first()
+                    if not news_in_db:
+                        a = AssociationNewsFromVkUser()
+                        a.child = News(**news)
+                        user.news.append(a)
+                        self.db_session.add(a)
+                        self.db_session.commit()
+        except Exception as ex:
+            self.db_session.rollback()
+            log.error(ex)
 
     def send_users_news(self, user_id):
         self.api.messages.send(
@@ -197,43 +209,47 @@ class VkBot:
             )
 
     def send_news_for_many_users(self, users_ids, keyword=None):
-        if keyword:
-            list_news = self.news_parser.get_news(keyword)
-        else:
-            list_news = self.news_parser.get_news()
-        if list_news:
-            return
-        news = list_news[0]
-        users_was_read_it = self.db_session.query(VkUser.vk_user_id).filter(VkUser.vk_user_id.in_(users_ids),
-                                                                             VkUser.news.any(News.title == news['title']),
-                                                                                VkUser.news.any(News.was_readed == True)).all()
+        try:
+            if keyword:
+                list_news = self.news_parser.get_news(keyword)
+            else:
+                list_news = self.news_parser.get_news()
+            if list_news:
+                return
+            news = list_news[0]
+            users_was_read_it = self.db_session.query(VkUser.vk_user_id).filter(VkUser.vk_user_id.in_(users_ids),
+                                                                                 VkUser.news.any(News.title == news['title']),
+                                                                                    VkUser.news.any(News.was_readed == True)).all()
 
-        users_ids = list(set(users_ids) - set([_[0] for _ in users_was_read_it]))
-        users = self.db_session.query(VkUser).filter(VkUser.vk_user_id.in_(users_ids)).all()
-        for user in users:
-            news_in_db = self.db_session.query(News).filter(News.title == news['title']).first()
-            with self.db_session.no_autoflush:
-                a = AssociationNewsFromVkUser()
-                if not news_in_db:
-                    new_news = News(**news)
-                    a.child = new_news
-                    a.child.was_readed = True
-                    user.news.append(a)
-                    self.db_session.commit()
-                elif news_in_db and not self.db_session.query(AssociationNewsFromVkUser)\
-                        .filter(AssociationNewsFromVkUser.child == news_in_db, AssociationNewsFromVkUser.parent == user).first():
-                    a.child = news_in_db
-                    a.child.was_readed = True
-                    user.news.append(a)
-                    self.db_session.commit()
-        if users_ids:
-            self.api.messages.send(
-                user_ids=users_ids,
-                random_id=random.randint(0, sys.maxsize),
-                message="Новость: {} \nПодробне: {}\n".format(news["title"], news["link"]),
-                keyboard=self.keyboard
-            )
-            self.db_session.commit()
+            users_ids = list(set(users_ids) - set([_[0] for _ in users_was_read_it]))
+            users = self.db_session.query(VkUser).filter(VkUser.vk_user_id.in_(users_ids)).all()
+            for user in users:
+                news_in_db = self.db_session.query(News).filter(News.title == news['title']).first()
+                with self.db_session.no_autoflush:
+                    a = AssociationNewsFromVkUser()
+                    if not news_in_db:
+                        new_news = News(**news)
+                        a.child = new_news
+                        a.child.was_readed = True
+                        user.news.append(a)
+                        self.db_session.commit()
+                    elif news_in_db and not self.db_session.query(AssociationNewsFromVkUser)\
+                            .filter(AssociationNewsFromVkUser.child == news_in_db, AssociationNewsFromVkUser.parent == user).first():
+                        a.child = news_in_db
+                        a.child.was_readed = True
+                        user.news.append(a)
+                        self.db_session.commit()
+            if users_ids:
+                self.api.messages.send(
+                    user_ids=users_ids,
+                    random_id=random.randint(0, sys.maxsize),
+                    message="Новость: {} \nПодробне: {}\n".format(news["title"], news["link"]),
+                    keyboard=self.keyboard
+                )
+                self.db_session.commit()
+        except Exception as ex:
+            self.db_session.rollback()
+            log.error(ex)
 
     def _connect(self):
         try:
