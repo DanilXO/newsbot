@@ -7,6 +7,7 @@ if __name__ == '__main__':
     from vk_bot import VkBot
     import subprocess
     bot = VkBot()
+    migrations = subprocess.Popen([sys.executable, "models.py"])
     sender = subprocess.Popen([sys.executable, "sender.py"])
     bot.run()
     sender.kill()
