@@ -7,8 +7,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import ClauseElement
 import psycopg2
+
+from main import DEBUG
+
 Base = declarative_base()
-engine = create_engine('postgresql+psycopg2://project:password@localhost:5432/news_bot', echo=False)
+if DEBUG:
+    engine = create_engine('postgresql+psycopg2://project:password@localhost:5432/news_bot', echo=False)
+else:
+    engine = create_engine('postgresql+psycopg2://utqienoagcquva:107b18dc3489b3c41cef986d55a8b36c023c0f1697fd48266ff2d1bd05df8611@ec2-46-137-159-254.eu-west-1.compute.amazonaws.com:5432/d8idaaigp5e1sq', echo=False)
 
 association_vkuser_keywords_table = Table('vkuser_keywords', Base.metadata,
                                           Column('vk_user_id', Integer, ForeignKey('vk_users.vk_user_id')),
