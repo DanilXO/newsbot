@@ -1,12 +1,13 @@
+import sys
+import os.path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import datetime
 
 import requests
 from bs4 import BeautifulSoup
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, Table, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, backref
-from sqlalchemy.sql import ClauseElement
-import psycopg2
+from sqlalchemy.orm import relationship
 
 from main import DEBUG
 
